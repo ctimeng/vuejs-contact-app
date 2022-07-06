@@ -3,7 +3,7 @@
     <div class="card mx-auto mb-3 mt-3 shadow" style="width: 30rem">
       <div class="card-body">
         <ValidationObserver v-slot="{ invalid }">
-          <form @submit.prevent="onSubmit">
+          <form @submit.prevent="onSubmit" ref="frmContact">
             <input type="hidden" id="txtId" value="0" />
             <ValidationProvider
               name="Name"
@@ -15,7 +15,7 @@
                   type="text"
                   class="form-control"
                   placeholder="Name"
-                  v-model="name"
+                  v-model="contact.name"
                 />
               </div>
               <span>{{ errors[0] }}</span>
@@ -33,7 +33,7 @@
                   type="text"
                   class="form-control"
                   placeholder="Phone"
-                  v-model="phone"
+                  v-model="contact.phone"
                 />
               </div>
               <span>{{ errors[0] }}</span>
@@ -48,7 +48,7 @@
                   type="text"
                   class="form-control"
                   placeholder="john@example.com"
-                  v-model="email"
+                  v-model="contact.email"
                 />
               </div>
               <span>{{ errors[0] }}</span>
@@ -60,7 +60,7 @@
                 class="btn btn-success"
                 :disabled="invalid"
               >
-                {{ id > 0 ? "Update" : "Save" }}
+                {{ saveUpdateCaption }}
               </button>
             </div>
           </form>
@@ -85,7 +85,7 @@
           <td>{{ contact.name }}</td>
           <td>{{ contact.phone }}</td>
           <td>{{ contact.email }}</td>
-          <td>{{ contact.date.toLocaleString() }}</td>
+          <td>{{ moment(contact.date,'YYYY-MM-DD').format("DD-MM-YYYY") }}</td>
           <td>
             <a href="#" class="btn btn-primary" @click.prevent="onEdit(i)"
               >Edit</a
@@ -108,6 +108,7 @@ import {
   ValidationProvider,
   setInteractionMode,
 } from "vee-validate";
+import moment from 'moment';
 
 setInteractionMode("eager");
 
@@ -136,19 +137,26 @@ extend("email", {
   message: "Email must be valid",
 });
 
+const EMPTY_VALUE = -1
+
 export default {
   name: "Contact",
   components: {
     ValidationObserver,
-    ValidationProvider,
+    ValidationProvider
   },
   data: () => ({
-    id: 0,
-    name: "",
-    phone: "",
-    email: "",
+    contact: {
+        id: 0,
+        name: null,
+        phone: null,
+        email: null,
+        date:""
+    },
+    contactCopy: {},
     contacts: [],
     selectedIndex: -1,
+    EMPTY_VALUE
   }),
   computed: {
     autoIncrementContactId() {
@@ -156,18 +164,30 @@ export default {
         ? this.contacts[this.contacts.length - 1].id + 1
         : 1;
     },
+
+    isSave(){
+        return this.selectedIndex == EMPTY_VALUE
+    },
+
+    saveUpdateCaption(){
+        return this.isSave ? 'Save': 'Update'
+    }
   },
   created() {
     this.contacts = JSON.parse(localStorage.getItem("contacts") || "[]");
+    this.moment = moment;
   },
+  mounted() {
+        this.contactCopy = { ...this.contact };
+    },
   methods: {
     onSubmit() {
         const self = this
       var exists = false;
       this.contacts.forEach(function (contact) {
         if (
-          contact.id != self.id &&
-          (contact.phone == self.phone || contact.email == self.email)
+          contact.id != self.contact.id &&
+          (contact.phone == self.contact.phone || contact.email == self.contact.email)
         ) {
           exists = true;
         }
@@ -177,34 +197,22 @@ export default {
         alert("Record already exists!");
         return;
       }
-      if (this.id > 0) {
-        var contact = this.contacts[this.selectedIndex];
-        contact.name = this.name;
-        contact.phone = this.phone;
-        contact.email = this.email;
+      if (self.isSave) {
+        this.contact.id = this.autoIncrementContactId
+        this.contact.date = new Date()
+        this.contacts.push(this.contact);
       } else {
-        let contact = {
-          id: this.autoIncrementContactId,
-          name: this.name,
-          phone: this.phone,
-          email: this.email,
-          date: new Date(),
-        };
-        this.contacts.push(contact);
+        this.contacts[this.selectedIndex] = this.contact;
       }
 
       localStorage.setItem("contacts", JSON.stringify(this.contacts));
       this.clear();
-      alert((this.id > 0 ? 'Update': 'Save')+' successfully!')
+      alert(this.saveUpdateCaption+' successfully!')
     },
 
     onEdit(i) {
       this.selectedIndex = i;
-      let contact = this.contacts[i];
-      this.id = contact.id;
-      this.name = contact.name;
-      this.phone = contact.phone;
-      this.email = contact.email;
+      this.contact = this.contacts[i];
     },
 
     onDelete(i) {
@@ -220,11 +228,17 @@ export default {
     },
 
     clear() {
-      this.name = "";
-      this.phone = "";
-      this.email = "";
-      this.selectedIndex = -1;
+      this.selectedIndex = EMPTY_VALUE;
+      //this.$refs.frmContact.reset(); // This will clear that form
+      this.resetFormFields()
     },
+
+    resetFormFields() {
+      this.contact = { ...this.contactCopy };
+    },
+    moment: function () {
+        return moment();
+    }
   },
 };
 </script>
@@ -232,5 +246,6 @@ export default {
 <style scoped>
 span {
   display: block;
+  color:red
 }
 </style>
