@@ -2,9 +2,8 @@
   <div class="container">
     <div class="card mx-auto mb-3 mt-3 shadow" style="width: 30rem">
       <div class="card-body">
-        <ValidationObserver v-slot="{ invalid }">
-          <form @submit.prevent="onSubmit" ref="frmContact">
-            <input type="hidden" id="txtId" value="0" />
+        <ValidationObserver v-slot="{ invalid }" ref="observer">
+          <form @submit.prevent="onSubmit">
             <ValidationProvider
               name="Name"
               rules="required"
@@ -85,7 +84,7 @@
           <td>{{ contact.name }}</td>
           <td>{{ contact.phone }}</td>
           <td>{{ contact.email }}</td>
-          <td>{{ moment(contact.date,'YYYY-MM-DD').format("DD-MM-YYYY") }}</td>
+          <td>{{ moment(contact.date,'YYYY-MM-DD HH:mm:ss').format("DD-MM-YYYY HH:mm:ss") }}</td>
           <td>
             <a href="#" class="btn btn-primary" @click.prevent="onEdit(i)"
               >Edit</a
@@ -229,8 +228,8 @@ export default {
 
     clear() {
       this.selectedIndex = EMPTY_VALUE;
-      //this.$refs.frmContact.reset(); // This will clear that form
       this.resetFormFields()
+      this.$nextTick(() => this.$refs.observer.reset());
     },
 
     resetFormFields() {
